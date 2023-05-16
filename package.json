@@ -9,6 +9,7 @@
     "start:dev": "ts-node-dev 'src/index.ts'",
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:functional": "jest --projects ./test --runInBand",
+    "test:unit": "jest",
     "style:check": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
     "style:fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "lint": "eslint ./src ./test --ext ts",
@@ -31,6 +32,7 @@
   "homepage": "https://github.com/vitorAzevedo09/weather-app-node#readme",
   "devDependencies": {
     "@overnightjs/core": "^1.7.6",
+    "@types/axios": "^0.14.0",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.1",
     "@types/module-alias": "^2.0.1",
@@ -49,6 +51,7 @@
     "typescript": "^5.0.4"
   },
   "dependencies": {
+    "axios": "^1.4.0",
     "module-alias": "^2.2.2"
   }
 }
