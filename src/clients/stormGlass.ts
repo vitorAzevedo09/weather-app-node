@@ -1,12 +1,14 @@
-import { AxiosStatic, AxiosError } from "axios";
-import { InternalError } from "@src/util/errors/internal-error";
+import { InternalError } from '@src/util/errors/internal-error';
+import config, { IConfig } from 'config';
+// Another way to have similar behaviour to TS namespaces
+import * as HTTPUtil from '@src/util/request';
 
 export interface StormGlassPointSource {
   [key: string]: number;
 }
 
 export interface StormGlassPoint {
-  readonly time: string;
+  time: string;
   readonly waveHeight: StormGlassPointSource;
   readonly waveDirection: StormGlassPointSource;
   readonly swellDirection: StormGlassPointSource;
@@ -60,48 +62,49 @@ export class StormGlassResponseError extends InternalError {
   }
 }
 
-export class StormGlass {
+/**
+ * We could have proper type for the configuration
+ */
+const stormglassResourceConfig: IConfig = config.get(
+  'App.resources.StormGlass'
+);
 
+export class StormGlass {
   readonly stormGlassAPIParams =
     'swellDirection,swellHeight,swellPeriod,waveDirection,waveHeight,windDirection,windSpeed';
-
   readonly stormGlassAPISource = 'noaa';
 
-
-  constructor(protected request: AxiosStatic) { }
+  constructor(protected request = new HTTPUtil.Request()) { }
 
   public async fetchPoints(lat: number, lng: number): Promise<ForecastPoint[]> {
     try {
       const response = await this.request.get<StormGlassForecastResponse>(
-        `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${this.stormGlassAPIParams}&source=${this.stormGlassAPISource}`,
+        `${stormglassResourceConfig.get(
+          'apiUrl'
+        )}/weather/point?lat=${lat}&lng=${lng}&params=${this.stormGlassAPIParams
+        }&source=${this.stormGlassAPISource}`,
         {
           headers: {
-            Authorization: 'fake-root',
-          }
+            Authorization: stormglassResourceConfig.get('apiToken'),
+          },
         }
-      )
-
+      );
       return this.normalizeResponse(response.data);
     } catch (err) {
-      /**
-       * This is handling the Axios errors specifically
-       */
-      const axiosError = err as AxiosError;
-      if (
-        axiosError instanceof Error &&
-        axiosError.response &&
-        axiosError.response.status
-      ) {
+      //@Updated 2022 to support Error as unknown
+      //https://devblogs.microsoft.com/typescript/announcing-typescript-4-4/#use-unknown-catch-variables
+      if (err instanceof Error && HTTPUtil.Request.isRequestError(err)) {
+        const error = HTTPUtil.Request.extractErrorData(err);
         throw new StormGlassResponseError(
-          `Error: ${JSON.stringify(axiosError.response.data)} Code: ${axiosError.response.status
-          }`
+          `Error: ${JSON.stringify(error.data)} Code: ${error.status}`
         );
       }
-      // The type is temporary given we will rework it in the upcoming chapters
-      throw new ClientRequestError((err as Error).message);
+      /**
+       * All the other errors will fallback to a generic client error
+       */
+      throw new ClientRequestError(JSON.stringify(err));
     }
   }
-
   private normalizeResponse(
     points: StormGlassForecastResponse
   ): ForecastPoint[] {
